@@ -1,0 +1,1 @@
+Read config file(Json) and listen to the change of config(kotlin)
