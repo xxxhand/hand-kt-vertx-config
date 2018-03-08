@@ -6,10 +6,8 @@ import io.vertx.core.json.JsonObject
 
 import hand.kt.enums.ConfigEvents
 import io.vertx.core.DeploymentOptions
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.*
+import java.util.concurrent.CompletableFuture
 
 /**
  * Created by hand on 2018/3/1.
@@ -17,9 +15,13 @@ import kotlinx.coroutines.experimental.runBlocking
 
 class MainVerticle: AbstractVerticle() {
     private val verticles: MutableList<String> = mutableListOf()
+    private val oldVerticles = mutableListOf<String>()
 
     override fun start(startFuture: Future<Void>?) {
         vertx.eventBus().consumer<JsonObject>(ConfigEvents.CONFIG_CHANG.value, { msg ->
+            oldVerticles.clear()
+            verticles.map { oldVerticles.add(it) }
+            verticles.clear()
             doUnDeploy()
             doDeploy(msg.body())
         })
@@ -40,15 +42,13 @@ class MainVerticle: AbstractVerticle() {
     }
     private fun doUnDeploy() {
         println("Do un deploy")
-        for (id in verticles) {
-            vertx.undeploy(id, { res ->
-                if (res.failed()) {
-                    res.cause().printStackTrace()
-                    return@undeploy
-                }
-                println("Success un deploy id: $id")
-            })
-        }
+        oldVerticles.map { vertx.undeploy(it, { res ->
+            if (res.failed()) {
+                res.cause().printStackTrace()
+                return@undeploy
+            }
+            println("Success un deploy $it")
+        }) }
     }
 
 }
